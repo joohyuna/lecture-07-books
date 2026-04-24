@@ -1,10 +1,10 @@
-import { useSearchParams } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { useEffect, useState } from "react";
-import styles from "./Search.module.css";
+import styled from "styled-components";
+
 const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
 
-// JSON에는 값이 있음 때만 보여 준다. 없을 때는 없다가 아니라 아얘 보여주지 않음
-type BookType = {
+export type BookType = {
     id: string;
     volumeInfo: {
         title: string;
@@ -18,57 +18,118 @@ type BookType = {
     };
 };
 
-type ApiResponseType ={items: BookType[]};  // 대부분 type으로 만든 초록색 대부분 객체이다.
+type ApiResponseType = { items: BookType[] };
+
+// styled. 으로 연결할 때에는 기본 태그일 때
+const Wrap = styled.div`
+    padding: 30px;
+`;
+
+// styled()로 연결할 때에는 컴포넌트일 때
+// 이 StyleLink라는 애는, Link의 기능을 물려받은 스타일링 적용한 컴포넌트가 됨
+const StyleLink = styled(Link)`
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 8px;
+    background: white;
+    margin-bottom: 10px;
+    border: 1px solid #ddd;
+    transition: all 0.5s;
+
+    {/* 이건 styled-components의 문법이 아니라,
+        sass (향상된 CSS) 문법임
+    */}
+    &:hover {
+        background-color: #f3f3f3;
+    }
+`;
+
+const Cover = styled.img`
+    width: 60px;
+    height: 90px;
+    object-fit: cover;
+    border-radius: 4px;
+`;
+
+const NoCover = styled.div`
+    width: 60px;
+    height: 90px;
+    border-radius: 4px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+`;
+
+const Title = styled.div`
+    font-weight: 600;
+    margin-bottom: 4px;
+`;
+
+const Authors = styled.div`
+    font-size: 12px;
+    color: #555;
+`;
 
 function Search() {
-    // 사용자가 요청한 키워드를 받아서, 그것을 가지고 google API요청을 하고, 받아온 결과를 화면에 출력해주는 일
-    // query string으로 둘어온 값을 꺼내오기 위해서  useSearchParams를 사용
+    // 사용자가 요청한 keyword를 받아서, 그것을 가지고 google API 요청을 하고, 받아온 결과를 화면에 출력해주는 일
 
-    // useParams를 사용할 때는 const {id}= useParams();
-    // useSearchParams는 useState와 사용법이 동일
-    const [searchParams, setSearchParams] = useSearchParams(); // queryString내용이 params에 담겨 나옴
+    // keyword를 쿼리스트링으로 받겠다
+    const [searchParams] = useSearchParams();
+    // 이렇게 가져온 searchParams라고 하는 state의 값은 객체
+    const keyword = searchParams.get("keyword");
 
-    const keyword = searchParams.get("keyword"); // "수학"이라는게 있을 수도 있지만,  없을 수도 있음
-
-    // keyword준비 됬으니, API를 통해 요청한 정보를 받아다가 화면에 출력만 해주면 됨
-    //const [loading, setLoading] = useState<boolean>(true);
-    const [list, setList] = useState<BookType[]>([]);  // [] 알겠어, 근데 그안에 들어가는 요소의 타입이 뭐야?
+    const [list, setList] = useState<BookType[]>([]);
 
     useEffect(() => {
         if (!keyword) {
-            //setLoading(false); // 잠깐 빨간줄 무시
             return;
-        } // 키워드가 없다면 실행하지 말아라
+        }
 
-        fetch(`https://www.googleapis.com/books/v1/volumes?q=${keyword}&maxResults=20&key=${API_KEY}`)
-            .then(res => res.json())
-            .then((json: ApiResponseType)  => {
+        fetch(
+            `https://www.googleapis.com/books/v1/volumes?q=${keyword}&maxResults=20&key=${API_KEY}`,
+        )
+            .then(response => response.json())
+            .then((json: ApiResponseType) => {
+                // 데이터를 받아왔고, 그거에 대해서 자바스크립트 형태로 가공도 했으니
+                // 그걸 list라고 하는 state에 저장해야지
                 setList(json.items);
-                //setLoading(false);
             })
             .catch(err => {
                 console.log(err);
-                //setLoading(false);
             });
     }, [keyword]);
 
-    // 로딩에 대해서 처리를 해줘야 하나?  속도가 너무 빠르면 로딩을 넣지 않아도 되는것도 좋다
-    // 사용자에게는 로딩이 여기서는 않좋을수도 있다
-    // 로딩이 true
-    //if (loading) return <div>Loading....</div>
+    return (
+        <Wrap>
+            <h3>검색 결과 : {keyword}</h3>
 
-    // 로딩이 false
-    // 값을 못 가져 왔을 때?
-
-    return<div className={styles.wrap}>
-        <h3>검색 결과 : {keyword}</h3>
-
-        {/* 검색 결과 (책 목록) 출력 */}
-        {/* 데이터가 도착했는지 안했는지, 목폭이 있는지 없는지 판단 해줘야 되나? */}
-        {list.length === 0 && (<div>검색 결과가 없습니다.</div>)}
-        {list && list.map(book => ())}
-        {/* map이가고 하는 메소드는 꼭 대상이 array여야만 쓸수 있으니, list && 로 체크를 해줄땐, list가 null이 되나?를 생각해봐야 겠지만, 여기서 모든 조건을 따져봤을 때 list는 무조건 array이긴 하지만 구지 논리곱으로 체크해줄 필요가 없다. */}
-    </div>
+            {/* 검색 결과 (책 목록) 출력 */}
+            {/* 데이터가 도착했는지 안했는지, 목록이 있는지 없는지 판단 해줘야 되나? */}
+            {list.map((value, index) => (
+                <StyleLink key={index} to={`/detail/${value.id}`}>
+                    {value.volumeInfo.imageLinks ? (
+                        <Cover
+                            src={value.volumeInfo.imageLinks?.thumbnail}
+                            alt={value.volumeInfo.title}
+                        />
+                    ) : (
+                        <NoCover>No Cover</NoCover>
+                    )}
+                    <div>
+                        <Title>{value.volumeInfo.title}</Title>
+                        {/*
+                            array에서 사용할 수 있는 메소드 join(스트링)
+                            각 요소를 순회해서 하나의 값을 리턴하는데
+                            각 요소 사이에 [매개변수로 제공된 스트링]을 넣어준다.
+                        */}
+                        <Authors>{value.volumeInfo.authors?.join(", ")}</Authors>
+                    </div>
+                </StyleLink>
+            ))}
+        </Wrap>
+    );
 }
 
 export default Search;
